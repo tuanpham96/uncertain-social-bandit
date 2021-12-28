@@ -1,0 +1,27 @@
+name: social-bandit
+channels:
+  - conda-forge
+  - defaults
+dependencies: 
+  - python
+  - ipython
+  - cython
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - seaborn  
+  - ipykernel
+  - pip 
+  - xarray 
+  - dask 
+  - netCDF4 
+  - bottleneck
+  - h5netcdf
+  - h5py
+  - tqdm
+  - networkx
+  - pip:
+    - autoslot
+    - igraph
