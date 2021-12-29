@@ -207,23 +207,23 @@ class States(SlotsPlusDict,BanditDimensions):
         # extra_states: extra states to track, TBD for now
         super().__init__(K, N)
         self.Q = np.zeros((K,N))        # utility
-        self.A = nan_matrix((K,N))      # action
-        self.Y = nan_matrix((K,N))      # reward
-        self.Yc = nan_matrix((K,N))     # cumulative reward
-        self.M = nan_matrix((K,N))      # belief mean
-        self.V = nan_matrix((K,N))      # belief var
+        self.A = np.zeros((K,N))      # action
+        self.Y = np.zeros((K,N))      # reward
+        self.Yc = np.zeros((K,N))     # cumulative reward
+        self.M = np.zeros((K,N))      # belief mean
+        self.V = np.zeros((K,N))      # belief var
 
-        self.P = nan_matrix((K,N))      # action prob
-        self.G = nan_matrix((K,N))      # kalman gain
-        self.W = nan_matrix((N,N))      # social network
-        self.C = nan_matrix((K,N))      # content matrix
+        self.P = np.zeros((K,N))      # action prob
+        self.G = np.zeros((K,N))      # kalman gain
+        self.W = np.zeros((N,N))      # social network
+        self.C = np.zeros((K,N))      # content matrix
 
         self.Q_acl = np.zeros((K,N))    # action learning utility
         self.Q_sol = np.zeros((K,N))    # social learning utility
         self.t = t                      # time step
         self._done = False              # signal whether all states are done being used
 
-        self.rho = nan_matrix((K,1))
+        self.rho = np.zeros((K,1))
 
         self.set_saved_states(saved_states)
         self.set_extra_states(extra_states)

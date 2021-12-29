@@ -69,11 +69,13 @@ class TaskSetting:
                         var=self.var[ind,0])
 
 class ChildDevelopmentEnvironment(TaskSetting):
-    def __init__(self, env = dict(mean = [-100, 100], var = [1, 80], levels = 12),
+    def __init__(self, 
+                 levels = 12,
+                 env = dict(mean = [-100, 100], var = [1, 80]),
                  child = dict(mean = [-50, 50], var = [0, 40], time = [0, 400])):
-
-        unq_mu = np.linspace(env['mean'][0], env['mean'][1], env['levels'])
-        unq_s2 = np.linspace(env['var'][0], env['var'][1], env['levels'])
+        
+        unq_mu = np.linspace(env['mean'][0], env['mean'][1], levels)
+        unq_s2 = np.linspace(env['var'][0], env['var'][1], levels)
         df = pd.DataFrame(list(iterprod(unq_mu, unq_s2)), columns=['mu', 's2'])
         child_indices = df.query("mu > @child['mean'][0]" +
                                  "and mu < @child['mean'][1]" +
@@ -85,17 +87,20 @@ class ChildDevelopmentEnvironment(TaskSetting):
             rho  = None # override "get_rho" method instead 
         )
         
-        self.env = env 
+        self.env = dict(levels = levels, **env) 
         self.child = dict(indices = child_indices, **child)
-    
+        
+        num_tasks = self.K
+        self.rho_child = np.zeros((num_tasks,1))
+        self.rho_child[self.child['indices'],0] = 1.0
+        self.rho_adult = np.ones((num_tasks,1))
+        
     def get_rho(self, t):
         child_time = self.child['time']
-        num_tasks = self.K
         if t >= child_time[0] and t <= child_time[1]:
-            rho = np.zeros((num_tasks,1))
-            rho[self.child['indices'],0] = 1.0
+            rho = self.rho_child
         else:
-            rho = np.ones((num_tasks,1))
+            rho = self.rho_adult
         self.rho = rho
         return self.rho
 
