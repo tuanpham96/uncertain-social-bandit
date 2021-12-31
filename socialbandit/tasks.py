@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.random as npr
 import pandas as pd
+import copy 
 
 from itertools import product as iterprod
 
@@ -70,25 +71,32 @@ class TaskSetting:
 
 class ChildDevelopmentEnvironment(TaskSetting):
     def __init__(self, 
-                 levels = 12,
-                 env = dict(mean = [-100, 100], var = [1, 80]),
-                 child = dict(mean = [-50, 50], var = [0, 40], time = [0, 400])):
+                 env = dict(mean = [-100, 100], var = [1, 80], levels= 12),
+                 child = dict(mean = [-50, 50], var = [0, 40], time = [0, 400]),
+                 **kwargs
+                ):
+        # override with env_mean, env_var, env_levels, child_mean, child_var, child_time
+        override_vars = kwargs2dict_overridevars(kwargs, ['env', 'child'], sep='_')
+        env = copy.deepcopy(env)
+        env.update(override_vars['env'])
+        child = copy.deepcopy(child)
+        child.update(override_vars['child'])
         
-        unq_mu = np.linspace(env['mean'][0], env['mean'][1], levels)
-        unq_s2 = np.linspace(env['var'][0], env['var'][1], levels)
+        unq_mu = np.linspace(env['mean'][0], env['mean'][1], env['levels'])
+        unq_s2 = np.linspace(env['var'][0], env['var'][1], env['levels'])
         df = pd.DataFrame(list(iterprod(unq_mu, unq_s2)), columns=['mu', 's2'])
-        child_indices = df.query("mu > @child['mean'][0]" +
-                                 "and mu < @child['mean'][1]" +
-                                 "and s2 > @child['var'][0]" +
-                                 "and s2 < @child['var'][1]").index.tolist()
+        child['indices'] = df.query(
+            "mu > @child['mean'][0] and mu < @child['mean'][1]" +
+            "and s2 > @child['var'][0] and s2 < @child['var'][1]").index.tolist()
+        
         super().__init__(
             mean = df.mu.tolist(),
             var  = df.s2.tolist(),
             rho  = None # override "get_rho" method instead 
         )
         
-        self.env = dict(levels = levels, **env) 
-        self.child = dict(indices = child_indices, **child)
+        self.env = env
+        self.child = child
         
         num_tasks = self.K
         self.rho_child = np.zeros((num_tasks,1))

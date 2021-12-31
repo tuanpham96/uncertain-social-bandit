@@ -21,7 +21,7 @@ class SocialMultiArmedBandit(BanditDimensions):
 
     def __init__(self,
                  task_settings, social_settings, 
-                 initializer = None, 
+                 initializer = InitializerBanditAgnostic(), 
                  clock = ExperimentClock(T = 100),
                  action_sampler = SoftmaxSampler(tau = 1.0),
                  belief_updater = BayesianMeanTracker(var_error = 1.0),
@@ -33,29 +33,34 @@ class SocialMultiArmedBandit(BanditDimensions):
         self.task_settings = task_settings
         self.social_settings = social_settings
         
-        self.__set_initializer(initializer)
+        self.initializer = initializer
+        self.__config_initializer()
         
         self.clock = clock
         self.action_sampler = action_sampler
         
         self.belief_updater = belief_updater
+        self.__config_belief_updater()
+        
         self.action_learner = action_learner
         self.social_learner = social_learner
 
         self.states = None
         self.prev_states = None
 
-    def __set_initializer(self, initializer=None):
-        if initializer:
-            self.initializer = initializer
-            return 
+    def __config_initializer(self):
         
-        # by default set optimistic priors
-        self.initializer = InitEqualProb(
-            K=self.K, N=self.N, 
-            mu_0=self.task_settings.mean.max(), 
-            sigma2_0=self.task_settings.var.mean()
-        )
+        if isinstance(self.initializer, InitializerBanditAgnostic):
+            self.initializer.config_dim_and_priors(
+                task_settings = self.task_settings, 
+                num_agents = self.num_agents
+            )
+    
+    def __config_belief_updater(self):
+        
+        if self.belief_updater._need_further_config:
+            if isinstance(self.belief_updater, BayesianMeanTracker):
+                self.belief_updater.set_var_error(self.task_settings)
         
     def set_state_managers(self, saved_states = [], extra_states = [], save = False, save_args = dict()):
         self._save = save

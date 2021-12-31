@@ -4,7 +4,7 @@ from socialbandit.utils import *
 from socialbandit.tasks import TaskSetting
 
 class BeliefUpdater:
-    
+    _need_further_config = False
     def update(self, prev_states, states):
         raise NotImplementedError
 
@@ -15,8 +15,16 @@ class BeliefUpdater:
 
 class BayesianMeanTracker(BeliefUpdater):
     
-    def __init__(self, var_error):
-
+    def __init__(self, var_error=None):
+        
+        if var_error is None:
+            self.var_error = var_error
+            self._need_further_config = True
+            return 
+        
+        self.set_var_error(var_error)
+        
+    def set_var_error(self, var_error):
         if isinstance(var_error, TaskSetting):
             var_error = var_error.var
 
@@ -27,6 +35,7 @@ class BayesianMeanTracker(BeliefUpdater):
             var_error = np.array(var_error).reshape(-1,1) # column-vectorize it
 
         self.var_error = var_error
+        self._need_further_config = False
 
     def update(self, prev_states, states):
         G_t = prev_states.V / (prev_states.V + self.var_error) # kalman gain

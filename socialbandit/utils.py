@@ -1,11 +1,29 @@
 import numpy as np
 import numpy.random as npr
 import copy
-
+import re
+import warnings
+    
 def to_prob_per_col(X):
     # a bit faster than `col_norm(X,1)`, but has to make sure `all(X >= 0)`
+    # TODO: catch warning when divide by 0 
     return X / np.sum(X, axis=0, keepdims=True)
 
+def to_prob_per_col_with_div0_handling(X):
+    # will be much slower especially when X contains all-zeros columns (which then could )
+    # catch divide_by_0 from: https://newbedev.com/how-do-i-catch-a-numpy-warning-like-it-s-an-exception-not-just-for-testing
+    colsum = np.sum(X, axis=0, keepdims=True)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error')
+        try: 
+            return X / colsum
+        except RuntimeWarning:
+            pX = copy.deepcopy(X)
+            pX[:,colsum.reshape(-1) == 0] = 1.0 
+            return pX / np.sum(pX, axis=0, keepdims=True)
+            return pX
+        
 def col_norm(X, p=1):
     return X / np.linalg.norm(X, ord=p, axis=0, keepdims=True)
 
@@ -33,6 +51,22 @@ def nan_matrix(size):
     X.fill(np.nan)
     return X
 
+def kwargs2dict_overridevars(d, s, sep='_'):
+    # e.g: d = dict(a_time = 2, b_val = 3, d_name=4), s = ['a', 'b', 'c'], sep = '_'
+    # -> return dict(a = dict(time=2), b=dict(val=3), c=dict(), __undefined__=dict(d_name=4))
+    undef_key = '__undefined__'
+    d2 = {_k: dict() for _k in s + [undef_key]}
+    re_pattern = re.compile('^(%s)%s*' %('|'.join(s), sep))
+    for k, v in d.items():
+        main_k2 = re_pattern.findall(k)
+        if len(main_k2) == 0: 
+            d2[undef_key] = v
+        else:
+            sub_k2 = re_pattern.sub('',k)
+            d2[main_k2[0]][sub_k2] = v 
+    return d2 
+
+    
 class ExperimentClock:
     def __init__(self, T,
                  T_action_sampling = 2,
