@@ -27,7 +27,7 @@ class UpperConfidenceBound(ActionLearner):
         self.beta = beta
 
     def learn(self, states):
-        return states.M + self.beta * states.V
+        return states.M + self.beta * np.sqrt(states.V)
 
 class MeanGreedyExploit(ActionLearner):
     def learn(self, states):
@@ -35,7 +35,7 @@ class MeanGreedyExploit(ActionLearner):
 
 class VarianceGreedyExplore(ActionLearner):
     def learn(self, states):
-        return states.V
+        return np.sqrt(states.V)
 
 class SocialLearner:
     def __init__(self, norm_social_fn=None, norm_weight_fn=None, norm_content_fn=None):
