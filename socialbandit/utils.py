@@ -7,7 +7,8 @@ import warnings
 def to_prob_per_col(X):
     # a bit faster than `col_norm(X,1)`, but has to make sure `all(X >= 0)`
     # TODO: catch warning when divide by 0 
-    return X / np.sum(X, axis=0, keepdims=True)
+    P = X / np.sum(X, axis=0, keepdims=True)
+    return P
 
 def to_prob_per_col_with_div0_handling(X):
     # will be much slower especially when X contains all-zeros columns (which then could )

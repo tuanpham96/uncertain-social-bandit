@@ -39,9 +39,9 @@ class BayesianMeanTracker(BeliefUpdater):
 
     def update(self, prev_states, states):
         G_t = prev_states.V / (prev_states.V + self.var_error) # kalman gain
-        GA_t = states.G * states.A # only update the ones acted upon at t
+        GA_t = G_t * states.A # only update the ones acted upon at t
         dM_t = GA_t * (states.Y - prev_states.M) # update posterior mean
-        dV_t = GA_t * prev_states.V # update posterior var (uncertainty)
+        dV_t = -GA_t * prev_states.V # update posterior var (uncertainty)
         M_t = prev_states.M + dM_t
         V_t = prev_states.V + dV_t
 

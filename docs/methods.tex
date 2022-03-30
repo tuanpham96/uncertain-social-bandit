@@ -1,0 +1,998 @@
+\documentclass[fleqn]{article}
+\usepackage{xcolor}
+\usepackage{mathtools,amssymb}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage[margin=0.5in,bmargin=0.8in]{geometry}
+
+
+\usepackage{enumitem}
+
+\setlist[1]{
+    label=$\bullet$,
+    topsep=2pt,
+    parsep=-2pt
+}
+
+\setlist[2]{
+    label=$\triangleright$,
+    topsep=-2pt,
+    parsep=-2pt
+}
+
+\setlist[3]{
+    label=$\circ$
+}
+
+\newcommand\iidsim{\stackrel{\mathclap{iid}}{\sim}}
+
+
+%%% Coloring the comment as blue
+\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
+\SetCommentSty{mycommfont}
+
+\SetKwInOut{KwInput}{Input}
+\SetKwInOut{KwOutput}{Output}
+\SetKwInOut{KwParam}{Param}
+\SetKwBlock{Initialization}{\normalfont\textit{Initialization}}{}
+\SetKwBlock{ActionSampling}{\normalfont\textit{ActionSampling (AcS)}}{}
+\SetKwBlock{RewardSampling}{\normalfont\textit{RewardSampling (ReS)}}{}
+\SetKwBlock{BeliefUpdating}{\normalfont\textit{BeliefUpdating (BeU)}}{}
+\SetKwBlock{UtilityUpdating}{\normalfont\textit{UtilityUpdating}}{}
+\SetKwBlock{ActionLearning}{\normalfont\textit{ActionLearning (AcL)}}{}
+\SetKwBlock{SocialLearning}{\normalfont\textit{SocialLearning (SoL) \& SocialSetting (SoS)}}{}
+
+\begin{document}
+
+\subsection*{Algorithm}
+
+\begin{algorithm}[!ht]
+\DontPrintSemicolon
+
+    \KwInput{
+        Task settings $\mathcal{K}
+            \left(
+                \overrightarrow{\mu},
+                \overrightarrow{\sigma}^2,
+                \overrightarrow{\rho}(t)
+            \right)$,
+        Social settings $\mathcal{S}$,
+        Number of trials $T$
+    }
+
+    \KwParam{
+        Parameters $\Theta =
+        \left\{
+            \Theta^{\mathrm{(0)}},
+            \Theta^{\mathrm{(AcS)}},
+            \Theta^{\mathrm{(BeU)}},
+            \Theta^{\mathrm{(AcL)}},
+            \Theta^{\mathrm{(SoS)}},
+            \Theta^{\mathrm{(SoL)}}
+        \right\}$
+        \\
+        \Indp \Indp
+        $\Theta^{\mathrm{(0)}} =
+            \left\{
+                \mu_0,
+                \sigma^2_0
+                \dots
+            \right\}
+        $
+        \hfill
+        $\Theta^{\mathrm{(AcS)}} =
+            \left\{
+                \tau_{\mathrm{s}},
+                \epsilon_{\mathrm{g}}
+                \dots
+            \right\}
+        $
+        \hfill
+        $\Theta^{\mathrm{(BeU)}} =
+        \left\{
+            \overrightarrow{\sigma}^2
+            \text{ or }
+            \sigma_{\epsilon}^2
+            \dots
+        \right\}
+        $
+        \\
+        $
+        \Theta^{\mathrm{(AcL)}} =
+        \left\{
+            \beta_{\mathrm{u}}
+            \dots
+        \right\}
+        $
+        \hfill
+        $\Theta^{\mathrm{(SoS)}} =
+            \left\{
+                \beta_h,
+                \dots
+            \right\}
+        $
+        \hfill
+        $\Theta^{\mathrm{(SoL)}} =
+        \left\{
+            \eta_{\mathrm{s}},
+            \alpha_{\mathrm{s}},
+            \dots
+        \right\}
+        $
+    }
+    \tcp*{Have not considered drift noise $\xi$}
+
+    \KwOutput{
+        $
+        \mathcal{Z}_t
+        \leftarrow
+        \left\{
+            \mathbf{Q}_t,
+            \mathbf{A}_t,
+            \mathbf{Y}_t,
+            \mathbf{Y}^{C}_t,
+            \mathbf{M}_t,
+            \mathbf{V}_t,
+            \left[
+                \mathbf{P}_t,
+                \mathbf{G}_t,
+                \mathbf{W}_t,
+                \mathbf{C}_t,
+                \mathbf{Q}^{\mathrm{(AcL)}}_t,
+                \mathbf{Q}^{\mathrm{(SoL)}}_t
+            \right]
+        \right\}
+        $
+    }
+    \Initialization{
+        \texttt{Initialize}: $
+        \Theta^{\mathrm{(0)}}
+        \longmapsto
+        \left(
+            \mathbf{M}_0,
+            \mathbf{V}_0,
+            \mathbf{P}_0
+        \right)
+        $
+
+        \Indp $\hookrightarrow  \texttt{Initialize} \in
+        \left\{
+            \texttt{InitEqualProb},
+            \texttt{InitNormUnifProb}
+        \right\}
+        $
+    }
+
+
+    \For{$t = 1 \to T$}{
+        \ActionSampling{
+            $
+            \left(
+                \mathbf{A}_t,
+                \left[
+                    \mathbf{P}_t
+                \right]
+            \right)
+            \leftarrow
+            \begin{dcases}
+                \texttt{WeightedChoice}
+                    \left(
+                        \mathbf{P}_0 \odot
+                        \overrightarrow{\rho}(t)
+                    \right)
+                &\text{if } t = 1
+                \text{ (or } t < T_{AcS} \text{)}
+                \\
+                \texttt{SampleAction}
+                    \left(
+                        \mathbf{Q}_{t-1},
+                        \overrightarrow{\rho}(t),
+                        \Theta^{\mathrm{(AcS)}}
+                    \right)
+                &\text{otherwise}
+                \\
+            \end{dcases}
+            $
+
+            \Indp \Indp \Indp \Indp \Indp $\hookrightarrow \texttt{SampleAction} \in
+            \left\{
+                \texttt{Softmax}(\tau_{\mathrm{s}}),
+                \texttt{Argmax},
+                \texttt{Greedy}(\epsilon_{\mathrm{g}}),
+                \texttt{Thompson}
+            \right\}
+            $
+        }
+
+        \RewardSampling{
+            \texttt{SampleReward}:  $
+            \left(
+                \mathbf{A}_{t},
+                \mathcal{K}
+            \right)
+            \longmapsto
+            \mathbf{Y}_{t}
+            $
+        }
+
+        \BeliefUpdating{
+            \texttt{UpdateBelief}: $
+            \left(
+                \mathbf{M}_{t-1},
+                \mathbf{V}_{t-1},
+                \mathbf{A}_{t},
+                \mathbf{Y}_{t},
+                \Theta^{\mathrm{(BeU)}}
+            \right)
+            \longmapsto
+            \left(
+                \mathbf{M}_{t},
+                \mathbf{V}_{t},
+                \left[
+                    \mathbf{G}_{t}
+                \right]
+            \right)
+            $
+
+            \Indp $\hookrightarrow \texttt{UpdateBelief} \in
+            \left\{
+                \texttt{BMT}\left(
+                    \overrightarrow{\sigma}^2
+                    \text{ or }
+                    \sigma_{\epsilon}^2
+                \right)
+            \right\}
+            $
+        }
+
+        \UtilityUpdating{
+            \ActionLearning{
+                \texttt{LearnAction}: $
+                \left(
+                    \mathbf{M}_{t},
+                    \mathbf{V}_{t},
+                    \Theta^{\mathrm{(AcL)}}
+                \right)
+                \longmapsto
+                \mathbf{Q}^{\mathrm{(AcL)}}_t
+                $
+
+                \Indp $\hookrightarrow \texttt{LearnAction} \in
+                \left\{
+                    \texttt{UCB}\left(
+                        \beta_{\mathrm{u}}
+                    \right),
+                    \texttt{MGE},
+                    \texttt{VGE}
+                \right\}
+                $
+            }
+
+            \SocialLearning{
+                \If{$t = 1$ (or $t < T_{SoL}$)}{
+                    $\mathbf{Q}^{\mathrm{(SoL)}}_t \leftarrow \mathbf{0}$
+                }
+                \Else{
+
+                    \texttt{SetSocial}: $
+                    \left(
+                        \mathcal{Z}_{t-1},
+                        \mathcal{S},
+                        \overrightarrow{\rho}(t-1),
+                        \Theta^{\mathrm{(SoS)}}
+                    \right)
+                    \longmapsto
+                    \left(
+                        \mathbf{C}_t,
+                        \mathbf{W}_t
+                    \right)
+                    $
+
+                    \texttt{LearnSocial}: $
+                    \left(
+                        \mathbf{C}_t,
+                        \mathbf{W}_t,
+                        \Theta^{\mathrm{(SoL)}}
+                    \right)
+                    \longmapsto
+                    \mathbf{Q}^{\mathrm{(SoL)}}_t
+                    $
+                }
+
+            }
+
+            \texttt{UpdateUtility}:
+            $
+            \left(
+                \mathbf{Q}^{\mathrm{(AcL)}}_t,
+                \mathbf{Q}^{\mathrm{(SoL)}}_t
+            \right)
+            \longmapsto
+            \mathbf{Q}_{t}
+            $
+
+        }
+
+        {
+            Update cumulative rewards
+            $
+            \mathbf{Y}^C_{t}
+            \leftarrow
+            \mathbf{Y}_{t} +
+            \mathbf{Y}^C_{t-1}
+            $
+
+            Save $
+            \mathcal{Z}_t \leftarrow
+            \left\{
+                \mathbf{Q}_t,
+                \mathbf{A}_t,
+                \mathbf{Y}_t,
+                \mathbf{Y}^{C}_t,
+                \mathbf{M}_t,
+                \mathbf{V}_t,
+                \left[
+                    \mathbf{P}_t,
+                    \mathbf{G}_t,
+                    \mathbf{W}_t,
+                    \mathbf{C}_t,
+                    \mathbf{Q}^{\mathrm{(AcL)}}_t,
+                    \mathbf{Q}^{\mathrm{(SoL)}}_t
+                \right]
+            \right\}
+            $
+        }
+
+    }
+
+
+\caption{Social multi-agent multi-armed bandits \textbf{S-MAMAB}}
+
+\end{algorithm}
+
+\subsection*{Descriptions of parameters and states}
+
+\subsubsection*{Notations and supporter functions}
+
+\begin{itemize}
+    \item If a matrix $\mathbf{X}$ is of dimension $K$ arms $\times$ $N$ agents, unless specified otherwise:
+        \begin{itemize}
+            \item $\mathbf{x}_i$ signifies the \textit{column} vector of values for the $i$-th agent,
+            \item $\mathbf{x}^{\prime}_k$ signifies the \textit{row} vector of values for the $k$-th arm
+            \item In other words,
+            $
+            \mathbf{X} =
+            \left[
+                \mathbf{x}_1,
+                \mathbf{x}_2
+                \dots
+                \mathbf{x}_N
+            \right] =
+            \left[
+                \mathbf{x}^{\prime}_1,
+                \mathbf{x}^{\prime}_2
+                \dots
+                \mathbf{x}^{\prime}_K
+            \right]^{\top}
+            $
+        \end{itemize}
+    \item $x \sim \mathcal{X}$ is a random variable sampled from $\mathcal{X}$
+        then $\mathbf{X} \iidsim \mathcal{X}^{m \times n}$
+        represents the matrix $\mathbf{X}$ of size $m \times n$
+        of random variables sampled from $\mathcal{X}$ independently,
+        i.e. $x_{ij} \sim \mathcal{X}$.
+        Similarly, if $\mathcal{X}$ is parameterized by $\theta$ then
+        $\mathbf{X} \iidsim \mathcal{X}(\Theta)$ where $\dim \Theta = (m,n)$ then
+        $x_{ij} \sim \mathcal{X}(\theta_{ij})$ sampled independently.
+    \item $\odot$ is the element-wise multiplication.
+        If $\dim\mathbf{A} = \dim\mathbf{B} = (m,n)$,
+        $\dim\mathbf{a} = (m,1)$ and
+        $\dim\mathbf{a}^{\prime} = (1,n)$:
+        \begin{itemize}
+            \item $(\mathbf{A} \odot \mathbf{B})_{ij} =
+                (\mathbf{B} \odot \mathbf{A})_{ij} =
+                a_{ij} b_{ij}$
+            \item $(\mathbf{a} \odot \mathbf{B})_{ij} =
+                (\mathbf{B} \odot \mathbf{a})_{ij} =
+                a_{i} b_{ij}$
+            \item $(\mathbf{a}^{\prime} \odot \mathbf{B})_{ij} =
+                (\mathbf{B} \odot \mathbf{a} ^{\prime})_{ij}  =
+                a^{\prime}_{j} b_{ij}$
+        \end{itemize}
+    \item Special matrices and vectors:
+        \begin{itemize}
+            \item  $\mathbf{e}^{(n)}_i$ is a column unit vector of size $n$
+                where only $e^{(n)}_i = 1$, and $e^{(n)}_j = 0 \ \forall j \neq i$.
+            \item Hence the identity matrix of size $n \times n$ is
+                $\mathbf{I}_{n} = \left[
+                    \mathbf{e}^{(n)}_1
+                    \dots
+                    \mathbf{e}^{(n)}_n
+                \right]$
+            \item The column vector of $n$ ones is $\mathbf{1}_n$
+                while the matrix of all ones of size $m \times n$ is $\mathbf{1}_{m \times n}$
+        \end{itemize}
+    \item $L^p$ Normalization:
+        \begin{itemize}
+            \item $\lVert\cdot\rVert = {\lVert\cdot\rVert}_2$ is the $L^2$ norm,
+                while ${\lVert\cdot\rVert}_p$ is the $L^p$ norm:
+                $\mathbf{x} \longmapsto
+                \left(\sum_{i=1}^n x^p_i \right)^{1/p}$
+                where $n = \dim \mathbf{x}$ and $p \neq 0$
+            \item Column $L^p$ normalization $\psi_p$.
+                For column vectors:
+                $\mathbf{x} \longmapsto \mathbf{x} / {\lVert\mathbf{x}\rVert}_p$.
+                For matrix:
+                $\mathbf{X} \longmapsto \left[
+                    \psi_p(\mathbf{x}_1)
+                    \dots
+                    \psi_p(\mathbf{x}_n)
+                \right] $
+            \item Row $L^p$ normalization $\psi^{\prime}_p$:
+                $\mathbf{X} \longmapsto
+                \psi_p\left(\mathbf{X}^{\top}\right)^{\top}$
+            \item For the sake of completion, though not necessary,
+                to use all elements (like Frobenius norm),
+                $\Psi_p: \mathbf{X} \longmapsto \mathbf{X} / {\lVert\mathbf{X}\rVert}_p$
+                where ${\lVert\mathbf{X}\rVert}_p = \left(\sum_{i,j} x^p_{ij} \right)^{1/p}$
+        \end{itemize}
+    \item Min/max normalization.
+        \begin{itemize}
+            \item Max-normalization per column for non-negative matrix: $
+                \psi_{\max}:
+                    \mathbb{R}_{\ge0}^{m \times n} \to \mathbb{R}_{\ge0}^{m \times n}:
+                    \mathbf{X} \longmapsto \left[
+                        \frac{\mathbf{x}_1}{\max\mathbf{x}_1}
+                        \dots
+                        \frac{\mathbf{x}_n}{\max\mathbf{x}_n}
+                    \right]
+                $.
+                Limit to only positive or non-negative matrices (i.e. all elements are either $>0$ or $\ge 0$, respectively).
+                For all zeros columns, either turn them all to $1$'s or $0$'s, depending on the need.
+            \item Min-max normalization per columns
+                $
+                \psi_{\mathrm{minmax}}:
+                    \mathbb{R}^{m \times n} \to \mathbb{R}^{m \times n}:
+                    \mathbf{x}_i = [\mathbf{X}]_i \longmapsto
+                        \frac{\mathbf{x}_i - \min\mathbf{x}_i}
+                        {\max\mathbf{x}_i - \min\mathbf{x}_i}
+                $
+                Again, depending on the need, columns where $\min\mathbf{x} = \max\mathbf{x}$ can be turned to all $1$'s or $0$'s.
+                Additionally, could also bottom-clip with
+                    $\psi_{\mathrm{minmax}}(\mathbf{X}, x_{\star})$
+                    so $\mathbf{x}_i \longmapsto
+                        \max\left[
+                            \psi_{\mathrm{minmax}}(\mathbf{x}_i),
+                            x_{\star}
+                        \right]
+                    $
+            \item Similarly, one can define
+                $\psi_{\min}$ for column min normalization
+            \item And for row normalizations:
+                $\psi_{\max}^{\prime}$,
+                $\psi_{\min}^{\prime}$,
+                $\psi_{\mathrm{minmax}}^{\prime}$
+            \item For the sake of completion,
+                to use all elements for global min/max
+                $\Psi_{\max}$,
+                $\Psi_{\min}$,
+                $\Psi_{\mathrm{minmax}}$
+        \end{itemize}
+    \item Normalized uniform \texttt{NormUniform}:
+        $(m, n) \in \mathbb{N} \times \mathbb{N}
+        \longmapsto
+        \mathbf{X} = \psi_1(\mathbf{U}) \in \mathbb{R}^{m \times n}
+        $, in which
+        $\mathbf{U} \iidsim \mathcal{U}_{[0,1]}^{m \times n}$ \\
+        Alternative notation: matrix of random variables
+        $\mathbf{X} \sim \widehat{\mathcal{U}}^{m \times n}$
+    \item Index sets, for $\mathbf{x} \in \mathbb{Z}^n_2$ where $\mathbb{Z} = \{0,1\}$
+        \begin{itemize}
+            \item For (column or row) vectors: $\mathcal{I}(\mathbf{x}) = \left\{i | x_{i} = 1\right\}$
+            \item For matrix, column-wise:
+                $\mathcal{I}(\mathbf{X}) = \left\{i | x_{ij} = 1\right\}$
+            \item For matrix, row-wise:
+                $\mathcal{I}^{\prime}(\mathbf{X}) = \left\{j | x_{ij} = 1\right\}$
+        \end{itemize}
+    \item Choices
+        \begin{itemize}
+            \item \texttt{WeightedChoice}
+                \begin{itemize}
+                    \item For column vector
+                        $\mathbf{w} \in \mathbb{R}^{n}_{+} \longmapsto
+                        \mathbf{e}^{(n)}_i \in \mathbb{Z}_2^n$,
+                        where index $i \in [1, n] \subset \mathbb{N}$
+                        is chosen with probability $\mathbf{p} = \psi_1(\mathbf{w})$
+                    \item For matrix
+                        $\mathbf{W} \in \mathbb{R}^{m \times n}_{+} \longmapsto
+                        \left[
+                            \texttt{WeightedChoice}(\mathbf{w}_1)
+                            \dots
+                            \texttt{WeightedChoice}(\mathbf{w}_n)
+                        \right]
+                        $
+                \end{itemize}
+            \item \texttt{Argmax} (to vectorize or matricize \texttt{argmax})
+                \begin{itemize}
+                    \item For column vector
+                        $\mathbf{x} \in \mathbb{R}^{n} \longmapsto
+                        \mathbf{e}^{(n)}_i \in \mathbb{Z}_2^n$,
+                        where index $i = \texttt{argmax}(\mathbf{x})$,
+                    \item For matrix
+                        $\mathbf{X} \in \mathbb{R}^{m \times n} \longmapsto
+                        \left[
+                            \texttt{Argmax}(\mathbf{x}_1)
+                            \dots
+                            \texttt{Argmax}(\mathbf{x}_n)
+                        \right]
+                        $
+                \end{itemize}
+        \end{itemize}
+    \item Moving average (TBD):
+        \begin{itemize}
+            \item Cumulative moving average \texttt{CMA}
+            \item Exponential moving average \texttt{EMA}$(\alpha_{\mathrm{EMA}})$
+        \end{itemize}
+\end{itemize}
+
+
+\subsubsection*{General inputs and settings}
+
+\begin{itemize}
+    \item $T$ is the number of \textit{trials}, i.e., discrete time steps $t \in \mathbb{N}$.
+    \item $\mathcal{K}$ describes the $K$ \textit{arms} (tasks) with
+        \begin{itemize}
+            \item mean \textit{reward} (column) vector $\overrightarrow{\mu} \in \mathbb{R}^K$
+            \item \textit{uncertainty} (variance) vector $\overrightarrow{\sigma}^2 \in \mathbb{R}_{+}^K$
+            \item and arm dynamic \textit{availability} vector $\overrightarrow{\rho}(t)$ \\
+            $\star$ For now $\overrightarrow{\rho}(t) \in \mathbb{Z}_2^K$
+                can just be a binary mask as a function of time,
+                but could also be considered as a probability to signify probabilistic availability of the arms.
+        \end{itemize}
+    \item The \textit{social} settings $\mathcal{S}$ contains information about the $N$ agents and how to construct
+        \begin{itemize}
+            \item the \textit{content} matrix $\mathbf{C}_t = \mathbf{C}(t) \in \mathcal{C}^{K \times N}$,
+            i.e. social ``mass'' to influence utility,
+            where $\mathcal{C} = \mathbb{Z}_2$ or  $\mathbb{R}_{+}$
+            \item and the agent \textit{social network} $\mathbf{W}_t = \mathbf{W}(t) \in \mathcal{W}^{N \times N}$
+            where $\mathcal{W} = \mathbb{Z}_2$ or  $\mathbb{R}_{+}$; which can be
+            \begin{itemize}
+                \item either a predefined $\mathbf{W}^{(0)}$ adjacency network,
+                In other words, static social network $\mathbf{W}_t = \mathbf{W}^{(0)} \ \forall t$
+                \item or defined with a homophily constructor, defining
+                    which \textit{content} matrix $\mathbf{C}^{(h)}$ to build from,
+                    and homophily factor $\beta_h \in \Theta^{\mathrm{(SoS)}}$,
+                    and how/whether to normalize
+            \end{itemize}
+            $\star$ The content matrices $\mathbf{C}$ or $\mathbf{C}^{(h)}$ do not have to be similar,
+                and can be constructed from the previous arm choice bipartite matrix $\mathbf{A}_{t-1}$,
+                or from the maximum belief mean $\mathbf{M}_{t-1}$ (or
+                    past reward $\mathbf{Y}_{t-1}$
+                    or cumulative rewards $\mathbf{Y}^C_{t-1}$)
+        \end{itemize}
+\end{itemize}
+
+
+\subsubsection*{Hyper/free parameters}
+
+\begin{itemize}
+    \item Initial/prior parameters $\Theta^{\mathrm{(0)}}$
+        \begin{itemize}
+            \item $\mu_0$ is the initial belief mean, set to be optimistic
+            \item $\sigma^2_0$ is the initial belief uncertainty
+        \end{itemize}
+    \item Action sampling parameters $\Theta^{\mathrm{(AcS)}}$
+        \begin{itemize}
+            \item $\tau_{\mathrm{s}}$ sets \texttt{Softmax}'s temperature
+            \item $\epsilon_{\mathrm{g}}$ is the free parameter for the $\epsilon$-greedy algorithm \texttt{Greedy}
+        \end{itemize}
+    \item Belief updating parameters $\Theta^{\mathrm{(BeU)}}$
+        \begin{itemize}
+            \item Usage of either
+                task/arm uncertainty $\overrightarrow{\sigma}^2$
+                or a scalar error term $\sigma^2$ for \textit{Bayesian mean tracker} (\texttt{BMT}) \\
+            $\star$ Right now not considering drift noise $\xi$
+        \end{itemize}
+    \item Action learning parameters for exploitation-exploration learning $\Theta^{\mathrm{(AcL)}}$
+        \begin{itemize}
+            \item $\beta_{\mathrm{u}}$ sets the exploration factor for the \textit{Upper-confidence-bound} sampling (\texttt{UCB})
+        \end{itemize}
+    \item Social setting parameters $\Theta^{\mathrm{(SoS)}}$
+        \begin{itemize}
+            \item $\beta_h$ sets the homophily factor
+        \end{itemize}
+    \item Social learning parameters $\Theta^{\mathrm{(SoL)}}$
+        \begin{itemize}
+            \item $\eta_{\mathrm{s}}$ is the scaling factor
+            \item $\alpha_{\mathrm{s}}$ is the power factor
+        \end{itemize}
+\end{itemize}
+
+\subsubsection*{Outputs and States}
+
+The state sets $\mathcal{Z}(t)$. (\textit{aux}) signifies which ones are intermediate and optional to save, also not necessarily appearing in outputs of all function and hyperparameter choices.
+
+\begin{itemize}
+    \item $\mathbf{Q}_t \in \mathbb{R}^{K \times N}$
+        is the utility matrix of each agent per each task
+    \item $\mathbf{A}_t \in \mathbb{Z}_2^{K \times N}$
+        is the binary choice matrix at time $t$.
+        Each agent only chooses $1$ arm at each time step.
+        (i.e. $\lVert \mathbf{a}_i(t) \rVert = 1$,
+        and cardinality $|\mathcal{I}(\mathbf{a}_i(t))| = 1$)
+    \item $\mathbf{Y}_t, \mathbf{Y}^{C}_t \in \mathbb{R}^{K \times N}$
+        are the actual reward at time $t$,
+        from the reward sampling steps,
+        and the cumulative reward matrix
+    \item $\mathbf{M}_t \in \mathbb{R}^{K \times N}$
+        and $\mathbf{V}_t \in \mathbb{R}_{+}^{K \times N}$
+        are the posterior (belief) mean reward matrix
+        and uncertainty (variance) matrix
+    \item (\textit{aux}) $\mathbf{P}_t \in \mathbb{R}_{+}^{K \times N}$
+        is the probability matrix constructed from $\mathbf{Q}_{t-1}$,
+        most likely from using \texttt{Sotfmax},
+        which can then be used to decide $\mathbf{A}_t$
+    \item (\textit{aux}) $\mathbf{G}_t \in \mathbb{R}_{+}^{K \times N}$
+        is the Kalman gain constructed from the Bayesian mean tracker process
+    \item (\textit{aux}) $\mathbf{W}_t \in \mathcal{W}^{N \times N}$
+        and $\mathbf{C}_t \in \mathcal{C}^{K \times N}$
+        are the social agent network and
+        content bipartite matrix, respectively.
+        See the above section describing \textit{social settings} $\mathcal{K}$ for more description
+    \item (\textit{aux}) $
+        \mathbf{Q}^{\mathrm{(AcL)}}_t,
+        \mathbf{Q}^{\mathrm{(SoL)}}_t
+        \in \mathbb{R}^{K \times N}$
+        are the utility matrices constructed from the action learning (e.g. \texttt{UCB})
+        and social learning processes, respectively.
+\end{itemize}
+
+\subsection*{Processes and functions}
+
+\subsubsection*{Initialization}
+
+\begin{itemize}
+    \item \texttt{InitBelief}: $
+        \left(
+            \mu_0,
+            \sigma^2_0
+        \right)
+        \longmapsto
+        \left(
+            \mathbf{M}_0 = \mu_0       \mathbf{1}_{K \times N},
+            \mathbf{V}_0 = \sigma^2_0  \mathbf{1}_{K \times N}
+        \right)
+        $
+    \item \texttt{InitEqualProb}: $
+        \left(
+            \mu_0,
+            \sigma^2_0
+        \right)
+        \longmapsto
+        \texttt{InitBelief}\left(\mu_0,\sigma^2_0\right)
+        \cup
+        \left(
+            \mathbf{P}_0 = \frac{1}{K} \mathbf{1}_{K \times N}
+        \right)
+        $
+    \item \texttt{InitNormUnifProb}: $
+        \left(
+            \mu_0,
+            \sigma^2_0
+        \right)
+        \longmapsto
+        \texttt{InitBelief}\left(\mu_0,\sigma^2_0\right)
+        \cup
+        \left(
+            \mathbf{P}_0 \sim \widehat{\mathcal{U}}^{K \times N}
+        \right)
+        $
+    \item (TBD) maybe somehow allowing an initial exploring phase, e.g. without social learning
+\end{itemize}
+
+\subsubsection*{Action Sampling (AcS)}
+
+\begin{itemize}
+    \item General inputs $\left(
+        \mathbf{Q} \leftarrow \mathbf{Q}_{t-1},
+        \overrightarrow{\rho} \leftarrow  \overrightarrow{\rho}(t)
+        \right)$
+    \item \texttt{Softmax}$(\tau_{\mathrm{s}})$
+        \begin{itemize}
+            \item $\mathbf{P} = \psi_1\left[
+                \exp\left(\mathbf{Q}/\tau_{\mathrm{s}}\right)
+                \odot
+                \overrightarrow{\rho}
+                \right]
+                \text{ where } \exp
+                \text{ is just element-wise exponential function}
+                $
+            \item $\mathbf{A} = \texttt{WeightedChoice}(\mathbf{P})$
+        \end{itemize}
+    \item \texttt{Argmax}: $\mathbf{A} = \texttt{Argmax}\left(
+        \mathbf{Q} \odot \overrightarrow{\rho}
+        \right)$
+    \item \texttt{Greedy}$(\epsilon_{\mathrm{g}})$
+        \begin{itemize}
+            \item $\mathbf{I}_{\mathrm{max}} =
+                \texttt{Argmax}(\mathbf{Q}
+                \odot
+                \overrightarrow{\rho})
+                $
+            \item $\mathbf{I}_{\mathrm{other}} =
+                \left(
+                    \mathbf{1}_{K \times N} -
+                    \mathbf{I}_{\mathrm{max}}
+                \right)
+                \odot
+                \overrightarrow{\rho}
+                $
+            \item $\mathbf{P} =
+                (1 - \epsilon_{\mathrm{g}}) \mathbf{I}_{\mathrm{max}} +
+                \epsilon_{\mathrm{g}}  \psi_1 (\mathbf{I}_{\mathrm{other}})
+                $
+            \item $\mathbf{A} = \texttt{WeightedChoice}(\mathbf{P})$
+        \end{itemize}
+    \item \texttt{Thompson} (TBD) unclear how to integrate social learning into distribution
+        \begin{itemize}
+            \item Generally $
+                \mathbf{A} = \texttt{Argmax}\left[
+                    \mathbf{X} \iidsim
+                    \mathcal{N}\left(
+                        \mathbf{\Lambda},
+                        \beta_{\mathrm{u}} \mathbf{\Sigma}
+                    \right)
+                \right]
+                $ where $
+                \mathbf{\Lambda} \leftarrow
+                    \mathbf{M}_{t-1} \odot \overrightarrow{\rho},
+                \mathbf{\Sigma} \leftarrow
+                    \mathbf{V}_{t-1} \odot \overrightarrow{\rho},
+                $
+                and $\beta_{\mathrm{u}} \in \Theta^{\mathrm{AcL}}$ is from \texttt{UCB}
+            \item But maybe with social learning, the variance (uncertainty) is reduced
+                based on $\mathbf{Q}^{\mathrm{(SoL)}}$, e.g with exponential decay
+                \begin{align*}
+                    \mathbf{\Sigma} \leftarrow
+                        \psi_{\max}
+                        \left[
+                            \exp\left(
+                                - \mathbf{Q}^{\mathrm{(SoL)}}
+                            \right)
+                            \odot \overrightarrow{\rho}
+                        \right]
+                        \odot \mathbf{V}_{t-1}
+                \end{align*}
+
+                This means that the smallest $q_{ij}^{\mathrm{(SoL)}}$
+                    will have the same uncertainty as $v_{ij}$, while
+                    higher social utility decays such uncertainty.
+                Note: could also use $\psi_{\mathrm{minmax}}$ instead of $\psi_{\max}$, and also a decaying factor in the exponential
+        \end{itemize}
+\end{itemize}
+
+\subsubsection*{Reward Sampling (ReS)}
+
+\begin{align*}
+    \mathbf{Y} =
+        \mathbf{A} \odot
+        \mathbf{y}^{\prime}
+    \text{ where }
+        \mathbb{R}^{1 \times N} \ni
+        \mathbf{y}^{\prime}
+        \iidsim
+        \mathcal{N}\left(
+            \overrightarrow{\mu}^{\top} \mathbf{A},
+            \overrightarrow{\sigma}^{2\top} \mathbf{A}
+        \right)
+\end{align*}
+
+\subsubsection*{Belief Updating (BeU)}
+
+\begin{align*}
+    \begin{dcases}
+        \mathbf{M}_t &=
+            \mathbf{M}_{t-1} +
+            \Delta \mathbf{M}_t
+        \\
+        \mathbf{V}_t &=
+            \mathbf{V}_{t-1} +
+            \Delta \mathbf{V}_t
+    \end{dcases}
+    & \text{ where }
+    \begin{dcases}
+        \Delta \mathbf{M}_t &=
+            \mathbf{G}^A_t
+            \odot
+            \left(
+                \mathbf{Y}_t
+                - \mathbf{M}_{t-1}
+            \right)
+        \\
+        \Delta \mathbf{V}_t &=
+            - \mathbf{G}^A_t
+            \odot
+            \mathbf{V}_{t-1}
+        \\
+        \mathbf{G}^A_t &=
+            \mathbf{G}_t
+            \odot
+            \mathbf{A}_t
+        \\
+        \mathbf{G}_t &=
+            \dfrac{\mathbf{V}_{t-1}}{\mathbf{V}_{t-1} + \mathbf{\Sigma}}
+            \text{ (element-wise division) }
+        \\
+        \mathbf{\Sigma} &=
+            \begin{dcases}
+                \overrightarrow{\sigma}^2 \mathbf{1}_{1 \times N}
+                    & \text{ if error is task dependent}
+                \\
+                \sigma_{\epsilon}^2 \mathbf{1}_{K \times N}
+                    & \text{ if use free parameter error}
+            \end{dcases}
+    \end{dcases}
+\end{align*}
+
+\begin{itemize}
+    \item \texttt{BMT}$
+        \left(
+            \overrightarrow{\sigma}^2
+            \text{ or }
+            \sigma^2_{\epsilon}
+        \right)$
+    \item no consideration of drift noise here $\xi$
+\end{itemize}
+
+\subsubsection*{Utility Updating}
+
+\begin{itemize}
+    \item \texttt{UpdateUtility} $
+        \mathbf{Q}_{t} \leftarrow
+        \mathbf{Q}^{\mathrm{(AcL)}}_t +
+        \mathbf{Q}^{\mathrm{(SoL)}}_t
+        $
+        \\
+        Additionally could also consider weighting them like
+        $
+        \mathbf{Q}_{t} \leftarrow
+        \gamma \mathbf{Q}^{\mathrm{(AcL)}}_t +
+        (1 - \gamma) \mathbf{Q}^{\mathrm{(SoL)}}_t
+        $
+\end{itemize}
+
+
+\subsubsection*{Action Learning (AcL)}
+
+\begin{align*}
+    \mathbf{Q}^{\mathrm{(AcL)}}_t =
+        \mathbf{M}_t +
+        \beta_{\mathrm{u}} \mathbf{V}_t
+\end{align*}
+
+\begin{itemize}
+    \item \texttt{UCB}$\left(\beta_{\mathrm{u}}\right)$ (like above)
+    \item \texttt{MGE}: $\mathbf{Q}^{\mathrm{(AcL)}}_t = \mathbf{M}_t$ (i.e. $\beta_{\mathrm{u}} = 0$)
+    \item \texttt{VGE}: $\mathbf{Q}^{\mathrm{(AcL)}}_t = \mathbf{V}_t$
+\end{itemize}
+
+\subsubsection*{Social Learning (SoL)}
+
+\begin{itemize}
+    \item \texttt{SetSocial} (SoS)
+        with optional $\texttt{HomophilyConstruct} \equiv \mathcal{H}$
+\end{itemize}
+
+\begin{align*}
+    \mathbf{C}_t &=
+        \begin{dcases}
+            \mathbf{A}_{t-1} \\
+            \texttt{Argmax}\left( \overrightarrow{\rho}(t-1) \odot \mathbf{Y}_{t-1}\right) \\
+            \texttt{Argmax}\left( \overrightarrow{\rho}(t-1) \odot \mathbf{Y}^C_{t-1}\right) \\
+            \texttt{Argmax}\left( \overrightarrow{\rho}(t-1) \odot \mathbf{M}_{t-1}\right)
+        \end{dcases}
+        \qquad
+        &\left[
+            \longrightarrow
+            \begin{dcases}
+                \texttt{CMA} \\
+                \texttt{EMA}
+            \end{dcases}
+        \right]
+    \\
+    \mathbf{C}^{(h)}_t &
+    \text{ constructed similarly if using } \mathcal{H}
+    \\
+    \mathbf{W}_t &=
+        \begin{dcases}
+            \mathbf{W}^{(0)}
+            &\text{ if predefined}
+            \\
+            \mathcal{H}\left(
+                \mathbf{C}^{(h)}_t,
+                \beta_h
+            \right)
+            &\text{ if using homophily}
+        \end{dcases}
+        \qquad
+        &\left[
+            \longrightarrow
+            \begin{dcases}
+                \psi_1 \text{ or } \psi^{\prime}_1 \\
+                \psi_2 \text{ or } \psi^{\prime}_2
+            \end{dcases}
+        \right]
+    \\
+    \mathcal{H}\left(
+        \mathbf{C},
+        \beta_h
+    \right) &\iidsim
+    \text{Bern}(\mathbf{P}_h)
+    \text{ where }
+    \mathbf{P}_h =
+    \begin{dcases}
+        \psi_1 \left[
+            \left(
+                \mathbf{C}^{\top}
+                \mathbf{C}
+            \right)^{\beta_h}
+        \right] \\
+        \psi_1 \left[
+            \left(
+                K -
+                \mathbf{C}^{\top}
+                \mathbf{C}
+            \right)^{-\beta_h}
+        \right]
+    \end{dcases}
+    \\
+    \mathbf{S}_t &=
+        \mathbf{C}_t
+        \mathbf{W}_t
+        \qquad
+        &\left[
+            \longrightarrow
+            \begin{dcases}
+                \psi_1 \text{ or } \psi^{\prime}_1 \\
+                \psi_2 \text{ or } \psi^{\prime}_2
+            \end{dcases}
+            \longrightarrow
+            \begin{dcases}
+                \texttt{CMA} \\
+                \texttt{EMA}
+            \end{dcases}
+        \right]
+\end{align*}
+
+\begin{itemize}
+    \item \texttt{LearnSocial} (SoL)
+\end{itemize}
+
+
+\begin{align*}
+    \mathbf{Q}^{\mathrm{(SoL)}}_t &=
+        \eta \mathbf{S}_t ^ \alpha
+        &\text{ where shorthand }
+        \eta \leftarrow \eta_s,
+        \alpha\leftarrow \alpha_s
+        \\
+        &= \eta \left(
+            \mathbf{C}_t
+            \mathbf{W}_t
+        \right) ^ \alpha
+        &\text{ (without normalization or moving averaging)}
+        \\
+        &= \eta \left[
+            \mathbf{A}_{t-1}
+            \text{Bern}\left(
+                \psi_1 \left[
+                    \left(
+                        \mathbf{A}_{t-1}^{\top}
+                        \mathbf{A}_{t-1}
+                    \right)^{\beta_h}
+                \right]
+            \right)
+        \right] ^ \alpha
+        &\text{ (simplest form)}
+\end{align*}
+
+\end{document}

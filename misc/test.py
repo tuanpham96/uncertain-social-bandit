@@ -82,3 +82,17 @@ class States(SlotsPlusDict,BanditDimensions):
 
 Z = States(3,7,1,['P','G'])
 
+
+
+# to test which one is faster to compare changed choices 
+K, N = 100, 220
+I = np.eye(K)
+a = I[:,np.random.choice(K, N)]
+b = I[:,np.random.choice(K, N)]
+np.mean((np.sum(a != b, axis=0) > 0) == (np.sum(a * b, axis=0) == 0))
+
+%timeit -n 100 np.sum(a != b, axis=0) > 0 
+# 59 µs ± 2.6 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+
+%timeit -n 100 np.sum(a * b, axis=0) == 0
+# 37.1 µs ± 1.01 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)

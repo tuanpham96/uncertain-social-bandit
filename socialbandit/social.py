@@ -83,7 +83,7 @@ class StaticSocialNetwork(SocialNetwork,Slots):
 
 class All2AllSocialNetwork(StaticSocialNetwork):
     def __init__(self, N):
-        super().__init__(W=np.ones((N,N)))
+        super().__init__(W=np.ones((N,N)) - np.eye(N))
 
 class DynamicSocialNetwork(SocialNetwork):    
     def __init__(self, *args, **kwargs):

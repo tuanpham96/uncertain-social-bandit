@@ -56,18 +56,18 @@ class TaskSetting:
     def sample(self, action):
         chosen_mean = self.mean.T @ action
         chosen_std  = self.std.T @ action
-        reward = action * npr.normal(chosen_mean, chosen_std)
+        reward = action * npr.normal(loc=chosen_mean, scale=chosen_std)
         return reward
 
     sample_reward = sample
 
     def __setitem__(self, ind, data):
-            self.mean[ind,0] = data['mean']
-            self.var[ind,0] = data['var']
+        self.mean[ind,0] = data['mean']
+        self.var[ind,0] = data['var']
 
     def __getitem__(self, ind):
-            return dict(mean=self.mean[ind,0],
-                        var=self.var[ind,0])
+        return dict(mean=self.mean[ind,0],
+                    var=self.var[ind,0])
 
 class ChildDevelopmentEnvironment(TaskSetting):
     def __init__(self, 
@@ -89,9 +89,10 @@ class ChildDevelopmentEnvironment(TaskSetting):
             "mu > @child['mean'][0] and mu < @child['mean'][1]" +
             "and s2 > @child['var'][0] and s2 < @child['var'][1]").index.tolist()
         
+        # TODO:  
         super().__init__(
             mean = df.mu.tolist(),
-            var  = df.s2.tolist(),
+            var  = [x**2 for x in df.s2.tolist()], # var  = df.s2.tolist(), code of paper mistook std and var
             rho  = None # override "get_rho" method instead 
         )
         
@@ -137,7 +138,7 @@ class SoftmaxSampler(ActionSampler):
     def sample(self, prev_states, rho=1.0):
         Q = prev_states.Q
         Q = Q - Q.max(axis=0, keepdims=True) # to avoid overflow
-        P = to_prob_per_col(np.exp(Q / self.tau) * rho)
+        P = to_prob_per_col(np.exp(Q / self.tau) * rho)        
         A = weighted_choice_matrix(P, norm=False)
         return dict(A=A, P=P)
 
