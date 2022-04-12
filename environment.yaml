@@ -13,7 +13,8 @@ dependencies:
   - matplotlib
   - seaborn  
   - ipykernel
-  - pip 
+  - pip
+  - fastparquet
   - xarray 
   - dask 
   - netCDF4 
@@ -25,3 +26,5 @@ dependencies:
   - pip:
     - autoslot
     - igraph
+    - ipywidgets
+    - ipympl

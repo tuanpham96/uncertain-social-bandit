@@ -180,8 +180,12 @@ class SocialMultiArmedBandit(BanditDimensions):
 
         if not self.states_are_set:
             raise ValueError('States are not set yet, please run "SocialMultiArmedBandit.set_state_managers"')
-
-        for t in tqdm_fn(range(T)):
+        
+        time_iter = range(T)
+        if tqdm_fn: 
+            time_iter = tqdm_fn(time_iter)
+            
+        for t in time_iter:
             self.step()
 
 

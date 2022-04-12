@@ -71,33 +71,46 @@ class TaskSetting:
 
 class ChildDevelopmentEnvironment(TaskSetting):
     def __init__(self, 
-                 env = dict(mean = [-100, 100], var = [1, 80], levels= 12),
-                 child = dict(mean = [-50, 50], var = [0, 40], time = [0, 400]),
+                 env = dict(mean = [-100, 100], std = [1, 80], levels= 12),
+                 child = dict(mean = [-50, 50], std = [0, 40], time = [0, 400]),
                  **kwargs
                 ):
-        # override with env_mean, env_var, env_levels, child_mean, child_var, child_time
+        # override with env_mean, env_std, env_levels, child_mean, child_std, child_time
         override_vars = kwargs2dict_overridevars(kwargs, ['env', 'child'], sep='_')
         env = copy.deepcopy(env)
         env.update(override_vars['env'])
         child = copy.deepcopy(child)
         child.update(override_vars['child'])
         
-        unq_mu = np.linspace(env['mean'][0], env['mean'][1], env['levels'])
-        unq_s2 = np.linspace(env['var'][0], env['var'][1], env['levels'])
-        df = pd.DataFrame(list(iterprod(unq_mu, unq_s2)), columns=['mu', 's2'])
+        # create df for env 
+        num_level = env['levels']
+        
+        unq_ind_mu, unq_ind_sigma = range(num_level), range(num_level)
+        unq_mu = np.linspace(env['mean'][0], env['mean'][1], num_level)
+        unq_sigma = np.linspace(env['std'][0], env['std'][1], num_level)
+        
+        df = pd.DataFrame(list(iterprod(unq_ind_mu, unq_ind_sigma)), 
+                          columns=['ind_mu', 'ind_sigma']) # create with variables index first
+        df.reset_index(inplace=True) # also include index for vector 
+        df['mu'] = unq_mu[df.ind_mu]
+        df['sigma'] = unq_sigma[df.ind_sigma]
+        
+        # get child indices        
         child['indices'] = df.query(
             "mu > @child['mean'][0] and mu < @child['mean'][1]" +
-            "and s2 > @child['var'][0] and s2 < @child['var'][1]").index.tolist()
+            "and sigma > @child['std'][0] and sigma < @child['std'][1]").index.tolist()
         
-        # TODO:  
+        # initialize
         super().__init__(
             mean = df.mu.tolist(),
-            var  = [x**2 for x in df.s2.tolist()], # var  = df.s2.tolist(), code of paper mistook std and var
+            var  = [x**2 for x in df.sigma.tolist()], 
             rho  = None # override "get_rho" method instead 
         )
         
+        # save 
         self.env = env
         self.child = child
+        self.env_df = df
         
         num_tasks = self.K
         self.rho_child = np.zeros((num_tasks,1))
@@ -112,7 +125,6 @@ class ChildDevelopmentEnvironment(TaskSetting):
             rho = self.rho_adult
         self.rho = rho
         return self.rho
-
 
 class ActionSampler:
     
@@ -138,7 +150,7 @@ class SoftmaxSampler(ActionSampler):
     def sample(self, prev_states, rho=1.0):
         Q = prev_states.Q
         Q = Q - Q.max(axis=0, keepdims=True) # to avoid overflow
-        P = to_prob_per_col(np.exp(Q / self.tau) * rho)        
+        P = to_prob_per_col(np.exp(Q / self.tau) * rho)  
         A = weighted_choice_matrix(P, norm=False)
         return dict(A=A, P=P)
 
