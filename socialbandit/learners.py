@@ -80,3 +80,24 @@ class SocialMassPower(SocialLearner):
 
         Q_sol = self.eta * np.power(S, self.alpha)
         return Q_sol
+    
+
+class MeanFriendContentLearner(SocialLearner):
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            norm_weight_fn = col_mean,
+            *args, **kwargs)
+        
+    def learn(self, states):
+        C, W = states.C, states.W
+        W = self.norm_weight_fn(W)
+        
+        if self.norm_content_fn:
+            C = self.norm_content_fn(C)
+
+        S = np.matmul(C, W)
+
+        if self.norm_social_fn:
+            S = self.norm_social_fn(S)
+            
+        return S

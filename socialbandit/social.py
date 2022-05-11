@@ -6,12 +6,15 @@ from socialbandit.utils import *
 
 
 class ContentConstructor:
-    def __init__(self, state_source='A', transform_fn=None, norm_fn=None):
+    def __init__(self, state_source='A', transform_fn=None):
         self.state_source = state_source
 
-        if state_source != 'A' and transform_fn is None:
+        # TODO: either delete the following or come up with another stategy 
+        #       this is because originally was thinkng the content needs to be binary to work with SocialMassPower social learner
+        #       but need actual values for MeanFriendContentLearner social learner
+        # if state_source != 'A' and transform_fn is None:
             # default of `transform_fn` if not using 'A(t-1)`
-            transform_fn = argmax_matrix
+            # transform_fn = argmax_matrix
 
         self.transform_fn = transform_fn
 
@@ -23,8 +26,13 @@ class ContentConstructor:
             return source
 
         prev_rho = prev_states.rho
-        return self.transform_fn(source * prev_rho)
-
+        
+        C = source * prev_rho
+        if self.transform_fn:
+            C = self.transform_fn(C)
+            
+        return C
+        
 class SocialSetting:
     def __init__(self, N,
                  social_fn = 'all2all',

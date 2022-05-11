@@ -11,7 +11,8 @@ def to_prob_per_col(X):
     return P
 
 def to_prob_per_col_with_div0_handling(X):
-    # will be much slower especially when X contains all-zeros columns (which then could )
+    # will be much slower especially when X contains all-zeros columns (which then could uniform)
+    # TBD on whether to keep
     # catch divide_by_0 from: https://newbedev.com/how-do-i-catch-a-numpy-warning-like-it-s-an-exception-not-just-for-testing
     colsum = np.sum(X, axis=0, keepdims=True)
 
@@ -22,11 +23,15 @@ def to_prob_per_col_with_div0_handling(X):
         except RuntimeWarning:
             pX = copy.deepcopy(X)
             pX[:,colsum.reshape(-1) == 0] = 1.0 
-            return pX / np.sum(pX, axis=0, keepdims=True)
-            return pX
+            return to_prob_per_col(pX)
         
 def col_norm(X, p=1):
     return X / np.linalg.norm(X, ord=p, axis=0, keepdims=True)
+
+def col_mean(X): 
+    sX = np.sum(X, axis=0, keepdims=True)
+    sX[sX == 0] = 1.0 # to avoid division by 0
+    return X / sX
 
 def row_norm(X, p=1):
     return X / np.linalg.norm(X, ord=p, axis=1, keepdims=True)
