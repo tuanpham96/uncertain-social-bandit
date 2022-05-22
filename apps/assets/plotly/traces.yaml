@@ -1,0 +1,3 @@
+line:
+  width: 3
+hovertemplate: "(%{x}, %{y:.2f})"

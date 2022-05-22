@@ -886,6 +886,8 @@ The state sets $\mathcal{Z}(t)$. (\textit{aux}) signifies which ones are interme
     \mathbf{C}_t &=
         \begin{dcases}
             \mathbf{A}_{t-1} \\
+            \mathbf{M}_{t-1} \\
+            \mathbf{Y}_{t-1} \\
             \texttt{Argmax}\left( \overrightarrow{\rho}(t-1) \odot \mathbf{Y}_{t-1}\right) \\
             \texttt{Argmax}\left( \overrightarrow{\rho}(t-1) \odot \mathbf{Y}^C_{t-1}\right) \\
             \texttt{Argmax}\left( \overrightarrow{\rho}(t-1) \odot \mathbf{M}_{t-1}\right)

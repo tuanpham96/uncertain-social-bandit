@@ -1,0 +1,8 @@
+pandas
+numpy
+matplotlib
+plotly
+fastparquet
+ipywidgets
+dash
+pyyaml

@@ -1,0 +1,25 @@
+axis:
+  showline: True
+  showgrid: False
+  showticklabels: True
+  linecolor: 'rgb(0, 0, 0)'
+  linewidth: 2
+  ticks: 'outside'
+  tickwidth: 2
+font:
+  family: "FreeSans"
+  size: 14
+  color: 'black'
+title:
+  title_x: 0.5
+  title_y: 0.9
+  title_xanchor: 'center'
+  title_yanchor: 'top'
+  title_font_size: 18
+general:
+  width: 1500
+  height: 450
+  showlegend: True
+  plot_bgcolor: 'white'
+  paper_bgcolor: 'white'
+  autosize: True
